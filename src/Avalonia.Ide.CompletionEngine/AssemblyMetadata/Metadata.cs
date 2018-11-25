@@ -14,6 +14,7 @@ namespace Avalonia.Ide.CompletionEngine
 
     public class MetadataType
     {
+        public bool IsEnum { get; set; }
         public bool IsMarkupExtension { get; set; }
         public bool IsStatic { get; set; }
         public bool HasHintValues { get; set; }
