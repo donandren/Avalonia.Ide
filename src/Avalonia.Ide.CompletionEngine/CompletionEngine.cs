@@ -164,7 +164,16 @@ namespace Avalonia.Ide.CompletionEngine
             return rv;
         }
 
-        public CompletionSet GetCompletions(Metadata metadata, string text, int pos, string currentAssemblyName = null)
+        /// <summary>
+        /// Compat with old apis
+        /// </summary>
+        public CompletionSet GetCompletions(Metadata metadata, string text,  int pos, string currentAssemblyName = null)
+        {
+            return GetCompletions(metadata, text, "", pos, currentAssemblyName);
+        }
+
+
+        public CompletionSet GetCompletions(Metadata metadata, string text, string fullText, int pos, string currentAssemblyName = null)
         {
             _helper.SetMetadata(metadata, text, currentAssemblyName);
 
@@ -216,24 +225,33 @@ namespace Avalonia.Ide.CompletionEngine
                 if (state.State == XmlParser.ParserState.InsideElement)
                     curStart = pos; //Force completion to be started from current cursor position
 
+                string attributeSuffix = "=\"\"";
+                int attributeOffset = 2;
+                if (fullText.Length > pos && fullText[pos] == '=')
+                {
+                    // attribute alraedy has value, we are edition name only
+                    attributeSuffix = "";
+                    attributeOffset = 0;
+                }
+
                 if (state.AttributeName?.Contains(".") == true)
                 {
                     var dotPos = state.AttributeName.IndexOf('.');
                     curStart += dotPos + 1;
                     var split = state.AttributeName.Split(new[] { '.' }, 2);
                     completions.AddRange(_helper.FilterPropertyNames(split[0], split[1], attached: true, hasSetter: true)
-                        .Select(x => new Completion(x, x + "=\"\"", x, CompletionKind.AttachedProperty, x.Length + 2)));
+                        .Select(x => new Completion(x, x + attributeSuffix, x, CompletionKind.AttachedProperty, x.Length + attributeOffset)));
                 }
                 else
                 {
                     completions.AddRange(_helper.FilterPropertyNames(state.TagName, state.AttributeName, attached: false, hasSetter: true)
-                        .Select(x => new Completion(x, x + "=\"\"", x, CompletionKind.Property, x.Length + 2)));
+                        .Select(x => new Completion(x, x + attributeSuffix, x, CompletionKind.Property, x.Length + attributeOffset)));
 
                     var targetType = _helper.LookupType(state.TagName);
                     completions.AddRange(
                         _helper.FilterTypes(state.AttributeName, xamlDirectiveOnly: true)
                             .Where(t => t.Value.IsValidForXamlContextFunc?.Invoke(currentAssemblyName, targetType, null) ?? true)
-                            .Select(v => new Completion(v.Key, v.Key + "=\"\"", v.Key, CompletionKind.Class, v.Key.Length + 2)));
+                            .Select(v => new Completion(v.Key, v.Key + attributeSuffix, v.Key, CompletionKind.Class, v.Key.Length + attributeOffset)));
 
                     if (targetType?.IsAvaloniaObjectType == true)
                         completions.AddRange(
